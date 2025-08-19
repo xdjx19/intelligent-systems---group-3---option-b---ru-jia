@@ -3,6 +3,22 @@ import numpy as np
 import sys
 import csv
 import os
+import cv2
+
+def threshold_image(img_gray_np, method='global', thresh=128):
+    if method == 'global':
+        return (img_gray_np >= thresh).astype(int)
+    elif method == 'otsu':
+        _, binary = cv2.threshold(img_gray_np, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        return (binary // 255).astype(int)
+    elif method == 'adaptive':
+        binary = cv2.adaptiveThreshold(img_gray_np, 255,
+                                       cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
+                                       cv2.THRESH_BINARY, 11, 2)
+        return (binary // 255).astype(int)
+    else:
+        raise ValueError("method must be 'global'|'otsu'|'adaptive'")
+
 
 def prepareimage(image_path, threshold=128):
     try:
