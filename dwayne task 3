@@ -1,0 +1,25 @@
+Research and Experimentation
+
+Different machine learning techniques were researched and tested for handwritten digit recognition using the MNIST dataset:
+
+k-Nearest Neighbors (kNN): Simple baseline, achieved good accuracy but was slow for large datasets.
+
+Support Vector Machine (SVM): Higher accuracy than kNN but slower in training.
+
+Multi-Layer Perceptron (MLP): A simple neural network, achieved high accuracy with faster performance.
+
+Convolutional Neural Network (CNN): Specialized for image data, gave the best overall accuracy and efficiency.
+
+Evaluation Results
+
+kNN: ~96% accuracy
+
+SVM: ~97% accuracy
+
+MLP: ~98% accuracy
+
+CNN: ~99% accuracy
+
+Selected Method
+
+The Convolutional Neural Network (CNN) was chosen as the best method due to its high accuracy and suitability for image recognition tasks.
