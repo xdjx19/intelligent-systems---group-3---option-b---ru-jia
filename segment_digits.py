@@ -140,6 +140,5 @@ if __name__ == "__main__":
         save_crops(cv2.cvtColor(bin_img, cv2.COLOR_GRAY2BGR), boxes, out_dir)
         print(f"Crops saved to: {out_dir}")
 
-print("Running segmentation...")
-print("Arguments:", sys.argv)
+    
 
