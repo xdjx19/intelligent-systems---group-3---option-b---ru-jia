@@ -74,13 +74,18 @@ model = models.Sequential([
     layers.Conv2D(64, 3, activation="relu"),
     layers.MaxPooling2D(),
     layers.Conv2D(128, 3, activation="relu"),
-    layers.Flatten(),
+    layers.MaxPooling2D(),
+    layers.Conv2D(256, 3, activation="relu"),
+    layers.GlobalAveragePooling2D(),
+    layers.Dense(256, activation="relu"),
+    layers.Dropout(0.4),
     layers.Dense(128, activation="relu"),
     layers.Dropout(0.3),
     layers.Dense(len(label_names), activation="softmax")
 ])
 
 model.compile(optimizer="adam", loss="categorical_crossentropy", metrics=["accuracy"])
+model.summary()
 
 # ==========================================================
 # 6. TRAIN MODEL
@@ -97,7 +102,7 @@ loss, acc = model.evaluate(X_test, y_test)
 print(f"📈 Test accuracy: {acc:.4f}")
 
 # ==========================================================
-# 8. SEGMENT AND SOLVE EQUATION
+# 8. IMPROVED SEGMENTATION AND EQUATION SOLVING
 # ==========================================================
 def segment_and_solve_equation(image_path):
     if not os.path.exists(image_path):
@@ -120,8 +125,15 @@ def segment_and_solve_equation(image_path):
     for contour in contours:
         x, y, w, h = cv2.boundingRect(contour)
         
-        # Filter small noise
-        if w > 10 and h > 10:
+        # Improved filtering - adjust thresholds based on your image sizes
+        if w > 8 and h > 8 and w * h > 100:  # Area filter for small noise
+            # Add padding to help with symbols that might be cut off
+            padding = 5
+            x = max(0, x - padding)
+            y = max(0, y - padding)
+            w = min(img.shape[1] - x, w + 2 * padding)
+            h = min(img.shape[0] - y, h + 2 * padding)
+            
             symbol_img = img[y:y+h, x:x+w]
             symbol_img = cv2.resize(symbol_img, (IMG_WIDTH, IMG_HEIGHT))
             symbol_img = symbol_img.astype("float32") / 255.0
@@ -130,7 +142,7 @@ def segment_and_solve_equation(image_path):
             pred = model.predict(np.expand_dims(symbol_img, axis=0), verbose=0)
             symbol = index_to_label[np.argmax(pred)]
             confidence = np.max(pred)
-            equation_parts.append((x, symbol, confidence))
+            equation_parts.append((x, symbol, confidence, w, h))
     
     # Sort symbols by x-coordinate and build equation
     equation_parts.sort(key=lambda x: x[0])
@@ -138,24 +150,69 @@ def segment_and_solve_equation(image_path):
     
     # Show detected symbols and confidence
     print("\n🔍 Detected Symbols:")
-    for i, (x, symbol, confidence) in enumerate(equation_parts):
-        print(f"  Symbol {i+1}: '{symbol}' (confidence: {confidence:.4f})")
+    for i, (x, symbol, confidence, w, h) in enumerate(equation_parts):
+        print(f"  Symbol {i+1}: '{symbol}' (confidence: {confidence:.4f}, bbox: {w}x{h})")
     
     print(f"\n🧮 Equation: {equation}")
     
-    # Solve the equation
+    # Enhanced equation solving with bracket support
     try:
         # Replace operators for Python evaluation
         equation_eval = equation.replace('×', '*').replace('÷', '/')
-        result = eval(equation_eval)
-        print(f"✅ Answer: {result}")
-        return result
+        
+        # For equations with equal signs, evaluate both sides
+        if '=' in equation_eval:
+            left_side, right_side = equation_eval.split('=', 1)
+            left_result = eval(left_side)
+            right_result = eval(right_side)
+            
+            # Check if equation is balanced
+            is_balanced = abs(left_result - right_result) < 1e-10
+            print(f"✅ Left side: {left_side} = {left_result}")
+            print(f"✅ Right side: {right_side} = {right_side}")
+            print(f"📊 Equation is {'balanced' if is_balanced else 'not balanced'}")
+            
+            return {
+                'left_result': left_result,
+                'right_result': right_result,
+                'is_balanced': is_balanced,
+                'equation': equation
+            }
+        else:
+            # Regular expression evaluation
+            result = eval(equation_eval)
+            print(f"✅ Answer: {result}")
+            return {
+                'result': result,
+                'equation': equation
+            }
+            
     except Exception as e:
         print(f"❌ Could not solve equation: {str(e)}")
         return None
 
 # ==========================================================
-# 9. MAIN EXECUTION
+# 9. VISUALIZE DETECTION (OPTIONAL)
+# ==========================================================
+def visualize_detection(image_path, output_path="detection_result.jpg"):
+    """Visualize the detected symbols on the original image"""
+    img = cv2.imread(image_path)
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    _, thresh = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+    
+    contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    
+    for contour in contours:
+        x, y, w, h = cv2.boundingRect(contour)
+        if w > 8 and h > 8 and w * h > 100:
+            # Draw bounding box
+            cv2.rectangle(img, (x, y), (x + w, y + h), (0, 255, 0), 2)
+    
+    cv2.imwrite(output_path, img)
+    print(f"📸 Detection visualization saved as {output_path}")
+
+# ==========================================================
+# 10. MAIN EXECUTION
 # ==========================================================
 if __name__ == "__main__":
     if len(sys.argv) != 2:
@@ -165,4 +222,9 @@ if __name__ == "__main__":
     
     image_path = sys.argv[1]
     print(f"🎯 Processing image: {image_path}")
-    segment_and_solve_equation(image_path)
+    
+    result = segment_and_solve_equation(image_path)
+    
+    # Optional: Generate visualization
+    if result:
+        visualize_detection(image_path)
