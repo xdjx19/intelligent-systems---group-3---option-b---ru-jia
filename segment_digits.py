@@ -7,30 +7,34 @@ import os
 import sys
 
 def binarize_otsu_inv(img_bgr):
+    # Convert BGR image to grayscale + apply Otsu's binary inversion thresholding
     gray = cv2.cvtColor(img_bgr, cv2.COLOR_BGR2GRAY) if img_bgr.ndim == 3 else img_bgr
     _, th = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     return th
 
 def morph_close(bin_img, ksize=(3,3), iters=1):
+    # Fill gaps in binary image
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT, ksize)
     return cv2.morphologyEx(bin_img, cv2.MORPH_CLOSE, kernel, iterations=iters)
 
 def connected_components_boxes(bin_img, min_area=40, min_h=10, min_w=6, max_ar=6.0):
+    # Find connected components and filter them based on size and aspect ratio
     num, labels, stats, _ = cv2.connectedComponentsWithStats(bin_img, connectivity=8)
     boxes = []
     for i in range(1, num):
         x, y, w, h, area = stats[i]
         if area < min_area or h < min_h or w < min_w:
             continue
-        ar = h / (w + 1e-6)  
-        if ar > max_ar:  
+        ar = h / (w + 1e-6)  # Avoid division by zero
+        if ar > max_ar:  # Filter by aspect ratio
             continue
         boxes.append((x, y, x + w, y + h))
-    boxes = _merge_overlaps(boxes, iou_thresh=0.3)
-    boxes.sort(key=lambda b: b[0])  
+    boxes = _merge_overlaps(boxes, iou_thresh=0.3) # Remove overlapping boxes
+    boxes.sort(key=lambda b: b[0])  # Sort boxes by x coordinate
     return boxes
 
 def _merge_overlaps(boxes, iou_thresh=0.3):
+    # Merge overlapping bounding boxes using Intersection over Union (IoU)
     def iou(a, b):
         x1, y1 = max(a[0], b[0]), max(a[1], b[1])
         x2, y2 = min(a[2], b[2]), min(a[3], b[3])
@@ -52,19 +56,20 @@ def _merge_overlaps(boxes, iou_thresh=0.3):
     return kept
 
 def watershed_split(bin_img, bbox):
+    # Apply watershed segmentation
     x1, y1, x2, y2 = bbox
     roi = bin_img[y1:y2, x1:x2]
     if roi.size == 0:
         return [bbox]
 
-    dist = cv2.distanceTransform(roi, cv2.DIST_L2, 5)
+    dist = cv2.distanceTransform(roi, cv2.DIST_L2, 5) # Compute distance transform
     if dist.max() <= 0:
         return [bbox]
-    _, sure_fg = cv2.threshold(dist, 0.5 * dist.max(), 255, 0)
+    _, sure_fg = cv2.threshold(dist, 0.5 * dist.max(), 255, 0) # sure foreground
     sure_fg = sure_fg.astype(np.uint8)
-    unknown = cv2.subtract(roi, sure_fg)
+    unknown = cv2.subtract(roi, sure_fg) # Unknown regions
 
-    num, markers = cv2.connectedComponents(sure_fg)
+    num, markers = cv2.connectedComponents(sure_fg) # Mark sure regions
     markers = markers + 1
     markers[unknown == 255] = 0
 

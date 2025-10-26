@@ -21,7 +21,7 @@ import tensorflow as tf
 
 # -------------------- import your segmentation --------------------
 try:
-    import threshold_segmentation as seg
+    import threshold_segmentation as seg # Attempt to import segmentation module
 except Exception as e:
     raise RuntimeError(
         "Could not import threshold_segmentation.py. "
@@ -34,6 +34,7 @@ from train_math_solver import predict_image_segments, load_dataset
 class SmallCNN(nn.Module):
     def __init__(self, num_classes: int = 10):
         super().__init__()
+        # Define layers: two convolutional layers, pooling, dropout, and fully connected layers
         self.c1 = nn.Conv2d(1, 32, 3, padding=1)      # -> 32x28x28
         self.c2 = nn.Conv2d(32, 64, 3, padding=1)     # -> 64x14x14 after pool
         self.pool = nn.MaxPool2d(2, 2)
@@ -42,6 +43,7 @@ class SmallCNN(nn.Module):
         self.fc2 = nn.Linear(128, num_classes)
 
     def forward(self, x):
+        # Define forward pass
         x = self.pool(torch.relu(self.c1(x)))         # 32x14x14
         x = self.pool(torch.relu(self.c2(x)))         # 64x7x7
         x = self.drop(x)
@@ -50,6 +52,7 @@ class SmallCNN(nn.Module):
         return self.fc2(x)
 
 def load_weights(path, device):
+    # Load weights from path and set model for evaluation
     model = SmallCNN(num_classes=10).to(device)
     state = torch.load(path, map_location=device)
     model.load_state_dict(state)
@@ -67,8 +70,9 @@ def to_28x28_centered(img_bgr_or_gray):
     _, th_inv = cv2.threshold(gray, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     ys, xs = np.where(th_inv > 0)
     if len(xs) == 0:
-        return cv2.resize(th_inv, (28, 28), interpolation=cv2.INTER_AREA)
+        return cv2.resize(th_inv, (28, 28), interpolation=cv2.INTER_AREA) # Resize if no digits found
 
+    # Crop the digit and pad it to a square shape
     x1, x2 = xs.min(), xs.max()
     y1, y2 = ys.min(), ys.max()
     digit = th_inv[y1:y2+1, x1:x2+1]
@@ -83,6 +87,7 @@ def to_28x28_centered(img_bgr_or_gray):
     return cv2.resize(square, (28, 28), interpolation=cv2.INTER_AREA)
 
 def draw_boxes(img_bgr, boxes, color=(0, 255, 0)):
+    # Draw bounding boxes around individual digits
     vis = img_bgr.copy()
     for (x1, y1, x2, y2) in boxes:
         cv2.rectangle(vis, (x1, y1), (x2, y2), color, 2)

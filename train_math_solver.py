@@ -38,6 +38,7 @@ def load_dataset():
     return np.array(images).reshape(-1, IMG_SIZE[0], IMG_SIZE[1], 1), np.array(labels), classes
 
 def build_model(num_classes):
+    # CNN model for digit recognition
     model = models.Sequential([
         layers.Conv2D(32, (3,3), activation='relu', input_shape=(IMG_SIZE[0], IMG_SIZE[1], 1)),
         layers.MaxPooling2D((2,2)),
@@ -46,7 +47,7 @@ def build_model(num_classes):
         layers.Flatten(),
         layers.Dense(128, activation='relu'),
         layers.Dropout(0.3),
-        layers.Dense(num_classes, activation='softmax')
+        layers.Dense(num_classes, activation='softmax') # Softmax for multi-class classification
     ])
     model.compile(optimizer='adam',
                   loss='sparse_categorical_crossentropy',
@@ -54,7 +55,7 @@ def build_model(num_classes):
     return model
 
 def train_and_save():
-    print("📦 Loading dataset...")
+    print("Loading dataset...")
     X, y, classes = load_dataset()
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
@@ -63,11 +64,11 @@ def train_and_save():
     model = build_model(len(classes))
     model.summary()
 
-    print("\n🚀 Training model...")
+    print("\nTraining model...")
     model.fit(X_train, y_train, epochs=12, validation_data=(X_test, y_test))
 
     model.save(MODEL_PATH)
-    print(f"\n💾 Model saved to {MODEL_PATH}")
+    print(f"\nModel saved to {MODEL_PATH}")
     return model, classes
 
 # ==========================================================
@@ -75,7 +76,7 @@ def train_and_save():
 # ==========================================================
 operator_map = {"add":"+","sub":"-","mul":"*","div":"/","eq":"=","x":"*","y":"+","z":"-"}
 digits_set = [str(i) for i in range(10)]
-operators_set = ["add","sub","mul","div","x","y","z"]
+operators_set = ["add","sub","mul","div","x","y","z"] # Supported operators
 equal_set = ["eq"]
 
 def preprocess_digit_image(img):
@@ -83,9 +84,10 @@ def preprocess_digit_image(img):
     thresh = cv2.adaptiveThreshold(img_gray,255,cv2.ADAPTIVE_THRESH_GAUSSIAN_C,
                                    cv2.THRESH_BINARY_INV,11,2)
     kernel = np.ones((2,2),np.uint8)
-    thresh = cv2.dilate(thresh,kernel,iterations=1)
+    thresh = cv2.dilate(thresh,kernel,iterations=1) # Morphological dilation
 
     h,w = thresh.shape
+        # Resize and maintain ratio
     if w > h:
         new_w = IMG_SIZE[0]
         new_h = int(h*(new_w/w))
@@ -144,7 +146,7 @@ def enforce_expression_pattern(predicted_labels):
 def predict_image_segments(image_path, model, classes):
     image = cv2.imread(image_path, cv2.IMREAD_GRAYSCALE)
     if image is None:
-        print(f"❌ Could not read {image_path}")
+        print(f"Could not read {image_path}")
         return
 
     _, thresh = cv2.threshold(image,128,255,cv2.THRESH_BINARY_INV+cv2.THRESH_OTSU)
@@ -166,19 +168,19 @@ def predict_image_segments(image_path, model, classes):
     cleaned = enforce_expression_pattern(predictions)
     expression_symbols = [operator_map.get(r,r) for r in cleaned]
     expression_str = " ".join(expression_symbols)
-    print(f"\n🧩 Detected Expression: {expression_str}")
+    print(f"\nDetected Expression: {expression_str}")
 
     expr_eval = expression_str.replace("=","").strip()
     if expr_eval:
         try:
             answer = eval(expr_eval)
-            print(f"🧮 Computed Result: {answer}")
+            print(f"Computed Result: {answer}")
             return f"{expr_eval} = {answer}"
         except Exception as e:
-            print(f"⚠️ Could not compute result: {e}")
+            print(f"Could not compute result: {e}")
             return f"Could not compute: {expression_str}"
     else:
-        print("⚠️ No valid expression detected.")
+        print("No valid expression detected.")
         return "No valid expression detected."
 
 # ==========================================================
@@ -188,7 +190,7 @@ if __name__ == "__main__":
     if not os.path.exists(MODEL_PATH):
         model, classes = train_and_save()
     else:
-        print(f"📂 Loading existing model from {MODEL_PATH}")
+        print(f"Loading existing model from {MODEL_PATH}")
         model = tf.keras.models.load_model(MODEL_PATH)
         _, _, classes = load_dataset()
 
@@ -196,5 +198,5 @@ if __name__ == "__main__":
         image_path = sys.argv[1]
         predict_image_segments(image_path, model, classes)
     else:
-        print("⚠️ No image provided. Run as:")
+        print("No image provided. Run as:")
         print("   python train_math_solver.py eq.png")
