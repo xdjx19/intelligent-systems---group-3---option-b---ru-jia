@@ -59,7 +59,7 @@ def train_and_save():
     X, y, classes = load_dataset()
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    print(f"✅ Loaded {len(X)} images across {len(classes)} classes.")
+    print(f"Loaded {len(X)} images across {len(classes)} classes.")
 
     model = build_model(len(classes))
     model.summary()
