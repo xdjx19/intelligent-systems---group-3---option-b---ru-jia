@@ -173,10 +173,13 @@ def predict_image_segments(image_path, model, classes):
         try:
             answer = eval(expr_eval)
             print(f"🧮 Computed Result: {answer}")
+            return f"{expr_eval} = {answer}"
         except Exception as e:
             print(f"⚠️ Could not compute result: {e}")
+            return f"Could not compute: {expression_str}"
     else:
         print("⚠️ No valid expression detected.")
+        return "No valid expression detected."
 
 # ==========================================================
 # MAIN EXECUTION
