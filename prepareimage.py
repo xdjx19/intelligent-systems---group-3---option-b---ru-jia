@@ -6,6 +6,8 @@ import os
 import cv2
 
 def threshold_image(img_gray_np, method='global', thresh=128):
+    # Apply thresholding to the grayscale image
+    # Returns binary output based on the provided method
     if method == 'global':
         return (img_gray_np >= thresh).astype(int)
     elif method == 'otsu':
@@ -21,6 +23,8 @@ def threshold_image(img_gray_np, method='global', thresh=128):
 
 
 def prepareimage(image_path, threshold=128):
+    # Preprocess image to a binary matrix
+    # Returns inverted binary matrix
     try:
         img = Image.open(image_path)
     except Exception as e:
@@ -36,6 +40,7 @@ def prepareimage(image_path, threshold=128):
     return invmatrix
 
 def exportcsv(matrix, output_file):
+    # Write binary matrix to CSV file with exception handling.
     try:
         with open(output_file, mode='w', newline='') as file:
             writer = csv.writer(file)
@@ -45,6 +50,7 @@ def exportcsv(matrix, output_file):
         print(f"Error exporting: {e}")
 
 def processimage(input_folder, output_folder):
+    # Bulk processes images into a folder to be converted to CSV to another folder
     if not os.path.exists(output_folder):
         os.makedirs(output_folder)
 
@@ -60,6 +66,7 @@ def processimage(input_folder, output_folder):
                 print(f"Can't process image {filename}.")
 
 def main():
+    # CLI handling
     if len(sys.argv) != 3:
         print("Usage: python prepareimage.py <input_folder> <output_folder>")
         return
