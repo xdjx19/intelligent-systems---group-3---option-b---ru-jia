@@ -14,11 +14,11 @@ from torch.utils.data import TensorDataset, DataLoader
 parser = argparse.ArgumentParser(description="Train CNN on MNIST train.csv only")
 # Define CLI arguments for specific configuration
 parser.add_argument("--train", type=str, default="mnist_train.csv", help="Path to train CSV")
-parser.add_argument("--epochs", type=int, default=8, help="Number of training epochs")
-parser.add_argument("--batch", type=int, default=64, help="Batch size for training")
-parser.add_argument("--lr", type=float, default=1e-3, help="Learning rate for Adam optimizer")
-parser.add_argument("--seed", type=int, default=42, help="Random seed for reproducibility")
-parser.add_argument("--save", type=str, default="cnn_mnist_trained.pt", help="File path to save model weights")
+parser.add_argument("--epochs", type=int, default=8, help="Training epochs")
+parser.add_argument("--batch", type=int, default=64, help="Train batch size")
+parser.add_argument("--lr", type=float, default=1e-3, help="Adam learning rate")
+parser.add_argument("--seed", type=int, default=42, help="Random seed")
+parser.add_argument("--save", type=str, default="cnn_mnist_trained.pt", help="File to save model weights")
 args = parser.parse_args()
 
 # ── 1) Reproducibility
@@ -30,11 +30,11 @@ np.random.seed(args.seed)
 def load_mnist_csv(path: str):
     # Load MNIST CSV data and preprocess the features and labels
     assert os.path.exists(path), f"CSV not found: {path}"
-    df = pd.read_csv(path)  # Read CSV file into a DataFrame
-    label_col = df.columns[0]  # First column is the label
-    y = df[label_col].to_numpy(dtype=np.int64)  # Extract labels
-    X = df.drop(columns=[label_col]).to_numpy(dtype=np.float32) / 255.0  # Normalize
-    X = X.reshape(-1, 1, 28, 28)  # Reshape to fit model input
+    df = pd.read_csv(path)
+    label_col = df.columns[0]  # assume first column is label
+    y = df[label_col].to_numpy(dtype=np.int64) # Extract labels
+    X = df.drop(columns=[label_col]).to_numpy(dtype=np.float32) / 255.0 # Normalize
+    X = X.reshape(-1, 1, 28, 28) # Reshape to fit model input
     return X, y
 
 # Load training data
@@ -78,5 +78,35 @@ class SmallCNN(nn.Module):
 
 # Initialize the CNN model and set up the loss function and optimizer
 model = SmallCNN(num_classes=num_classes).to(device)
-criterion = nn.CrossEntropyLoss()  # Multi-class classification
-optimizer = optim
+criterion = nn.CrossEntropyLoss()
+optimizer = optim.Adam(model.parameters(), lr=args.lr)
+
+# ── 5) Train loop (only training, no evaluation)
+def train_epochs(epochs: int):
+    for ep in range(1, epochs + 1):
+        model.train()
+        running_loss = 0.0
+        running_correct = 0
+        running_total = 0
+        for xb, yb in train_loader:
+            xb, yb = xb.to(device), yb.to(device)
+            optimizer.zero_grad()
+            logits = model(xb)
+            loss = criterion(logits, yb)
+            loss.backward()
+            optimizer.step()
+
+            running_loss += loss.item() * xb.size(0)
+            running_correct += (logits.argmax(1) == yb).sum().item()
+            running_total += yb.size(0)
+
+        tr_loss = running_loss / running_total
+        tr_acc  = running_correct / running_total
+        print(f"Epoch {ep:02d} | loss={tr_loss:.4f} | train_acc={tr_acc:.4f}")
+
+# ── 6) Run training
+train_epochs(args.epochs)
+
+# ── 7) Save model weights
+torch.save(model.state_dict(), args.save)
+print(f"\nSaved trained model -> {args.save}")
