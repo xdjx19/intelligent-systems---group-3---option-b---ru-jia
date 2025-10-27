@@ -12,7 +12,12 @@ from torch.utils.data import TensorDataset, DataLoader
 
 # ── 0) CLI args
 parser = argparse.ArgumentParser(description="Train CNN on MNIST train.csv only")
-parser.add_argument("--train", type=str, default="mnist_train.csv", help="Path to train CSV")
+parser.add_argument(
+    "--train",
+    type=str,
+    default=os.path.join("dataset", "mnist_train.csv"),  # ✅ looks inside 'dataset' folder
+    help="Path to train CSV"
+)
 parser.add_argument("--epochs", type=int, default=8, help="Training epochs")
 parser.add_argument("--batch", type=int, default=64, help="Train batch size")
 parser.add_argument("--lr", type=float, default=1e-3, help="Adam learning rate")
@@ -26,7 +31,8 @@ np.random.seed(args.seed)
 
 # ── 2) Load training CSV
 def load_mnist_csv(path: str):
-    assert os.path.exists(path), f"CSV not found: {path}"
+    assert os.path.exists(path), f"❌ CSV not found: {path}"
+    print(f"✅ Found training file: {path}")
     df = pd.read_csv(path)
     label_col = df.columns[0]  # assume first column is label
     y = df[label_col].to_numpy(dtype=np.int64)
@@ -99,4 +105,4 @@ train_epochs(args.epochs)
 
 # ── 7) Save model weights
 torch.save(model.state_dict(), args.save)
-print(f"\nSaved trained model -> {args.save}")
+print(f"\n💾 Saved trained model -> {args.save}")

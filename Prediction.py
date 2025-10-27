@@ -11,14 +11,15 @@ from sklearn.metrics import accuracy_score, confusion_matrix, classification_rep
 
 # ── 0) CLI args
 parser = argparse.ArgumentParser(description="Run predictions on MNIST test CSV using trained model")
-parser.add_argument("--test", type=str, default="dataset/mnist_test.csv", help="Path to test CSV")
-parser.add_argument("--weights", type=str, default="cnn_mnist.pt", help="Path to trained model weights")
+parser.add_argument("--test", type=str, default=os.path.join("dataset", "mnist_test.csv"), help="Path to test CSV")
+parser.add_argument("--weights", type=str, default="cnn_mnist_trained.pt", help="Path to trained model weights")  # ✅ fixed name
 parser.add_argument("--out", type=str, default="predictions.csv", help="File to save predictions")
 args = parser.parse_args()
 
 # ── 1) Load test data
 def load_mnist_csv(path: str):
-    assert os.path.exists(path), f"CSV not found: {path}"
+    assert os.path.exists(path), f"❌ CSV not found: {path}"
+    print(f"✅ Found test file: {path}")
     df = pd.read_csv(path)
     label_col = df.columns[0]  # first col is label
     y = df[label_col].to_numpy(dtype=np.int64)
@@ -52,9 +53,11 @@ class SmallCNN(nn.Module):
 # ── 3) Load model + weights
 device = "cuda" if torch.cuda.is_available() else "cpu"
 model = SmallCNN().to(device)
+
+assert os.path.exists(args.weights), f"❌ Model weights not found: {args.weights}"
 model.load_state_dict(torch.load(args.weights, map_location=device))
 model.eval()
-print(f"Loaded model weights from {args.weights}")
+print(f"✅ Loaded model weights from {args.weights}")
 
 # ── 4) Run predictions
 with torch.no_grad():
@@ -63,11 +66,11 @@ with torch.no_grad():
 
 # ── 5) Evaluate
 acc = accuracy_score(y_true, outputs)
-print(f"\nTest Accuracy: {acc:.4f}")
+print(f"\n✅ Test Accuracy: {acc:.4f}")
 print("\nConfusion Matrix:\n", confusion_matrix(y_true, outputs))
 print("\nPer-class Report:\n", classification_report(y_true, outputs))
 
 # ── 6) Save predictions
 out_df = pd.DataFrame({"TrueLabel": y_true, "Predicted": outputs})
 out_df.to_csv(args.out, index=False)
-print(f"\nSaved predictions -> {args.out}")
+print(f"\n💾 Saved predictions -> {args.out}")
